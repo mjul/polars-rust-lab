@@ -6,4 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-polars = { version = "0.32.1", features = ["lazy", "random"] }
+polars = { version = "0.32.1", features = ["lazy", "random", "dynamic_groupby"] }

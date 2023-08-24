@@ -102,10 +102,27 @@ fn sales_report() {
         // We can mark the data frame as sorted, or sort it explicitly -
         // or we will get an error when calling groupby_dynamic
         .sort("Date", SortOptions::default())
-        .groupby_dynamic(col("Date"), vec![], opts)
+        .groupby_dynamic(col("Date"), vec![], opts.clone())
         .agg(vec![col("Price").sum()])
         .collect();
     println!("Sales by month: {:?}", sales_by_calendar_month);
+
+    let sales_by_product_by_calendar_month = df
+        .clone()
+        .lazy()
+        .sort("Date", SortOptions::default())
+        // Putting Product in the second arg passes it through
+        .groupby_dynamic(col("Date"), vec![col("Product")], opts.clone())
+        .agg(vec![col("Price").sum()])
+        // We can reorder the columns and sort to our liking like this
+        .select(vec![col("Date"), col("Product"), col("Price")])
+        .sort("Date", SortOptions::default())
+        .collect()
+        .unwrap();
+    println!(
+        "Sales by product and month: {}",
+        sales_by_product_by_calendar_month
+    );
 }
 
 fn main() {

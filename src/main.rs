@@ -10,7 +10,7 @@ fn create_sales_data() -> DataFrame {
         let d = from_date.checked_add_days(Days::new(day_of_year)).unwrap();
         match d.weekday() {
             Weekday::Sat | Weekday::Sun => { /* skip weekends */ }
-            _ => weekdays_in_2023.push(d)
+            _ => weekdays_in_2023.push(d),
         }
     }
 
@@ -24,8 +24,17 @@ fn create_sales_data() -> DataFrame {
     let qty_dist = Series::new("qtys", 1..11.into());
     // with_replacement allows us to sample more values than there are in the distribution
     // casting to ChunkedArray gives us a typed array that makes the following code simpler (Series is of type AnyValue)
-    let quantity_series = qty_dist.sample_n(line_items, true, true, None).unwrap().i32().unwrap().clone();
-    let product_series = product_names.sample_n(line_items, true, true, None).unwrap().as_utf8().clone();
+    let quantity_series = qty_dist
+        .sample_n(line_items, true, true, None)
+        .unwrap()
+        .i32()
+        .unwrap()
+        .clone();
+    let product_series = product_names
+        .sample_n(line_items, true, true, None)
+        .unwrap()
+        .as_utf8()
+        .clone();
 
     let mut i = 0;
     for d in weekdays_in_2023 {
@@ -37,7 +46,7 @@ fn create_sales_data() -> DataFrame {
                 "Coffee" => 35 * qty,
                 "Tea" => 39 * qty,
                 "Cake" => 45 * qty,
-                _ => panic!("Unknown product")
+                _ => panic!("Unknown product"),
             } as u32;
             price_lines.push(price);
             i += 1;
@@ -50,14 +59,54 @@ fn create_sales_data() -> DataFrame {
         Series::new("Quantity", quantity_series.into_series()),
         Series::new("Price", price_lines),
     ])
-        .unwrap()
+    .unwrap()
 }
 
 fn sales_report() {
     let df = create_sales_data();
-    println!("Total sales: {}", df.column("Price").unwrap().sum::<u32>().unwrap());
-}
 
+    println!(
+        "Total sales: {}",
+        df.column("Price").unwrap().sum::<u32>().unwrap()
+    );
+
+    let sales_by_product = df
+        .clone()
+        .lazy()
+        .select(vec![col("*")])
+        .groupby(vec![col("Product")])
+        .agg(vec![col("Price").sum()])
+        .collect();
+    println!("Sales by product: {:?}", sales_by_product);
+
+    let opts = DynamicGroupOptions {
+        // Every calendar month
+        // "mo": calendar month
+        // every: indicates the interval of the window
+        every: Duration::parse("1mo"),
+        // Window length is 1 calendar month
+        // period: indicates the duration of the window
+        period: Duration::parse("1mo"),
+        // Start at start of month
+        // If you merge the above calendard months with the Default::default() from
+        // below without setting this to a time-like value, you will get panic
+        offset: Duration::parse("0d"),
+        // Align window to start of month, not the data points
+        truncate: true,
+        ..Default::default()
+    };
+
+    let sales_by_calendar_month = df
+        .clone()
+        .lazy()
+        // We can mark the data frame as sorted, or sort it explicitly -
+        // or we will get an error when calling groupby_dynamic
+        .sort("Date", SortOptions::default())
+        .groupby_dynamic(col("Date"), vec![], opts)
+        .agg(vec![col("Price").sum()])
+        .collect();
+    println!("Sales by month: {:?}", sales_by_calendar_month);
+}
 
 fn main() {
     println!("Starting...");

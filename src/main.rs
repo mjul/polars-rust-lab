@@ -31,8 +31,8 @@ fn create_sales_data() -> DataFrame {
     for d in weekdays_in_2023 {
         for q in 1..=SALES_PER_DAY {
             date_lines.push(d);
-            let p = product_series.get(0).unwrap();
-            let qty = quantity_series.get(0).unwrap();
+            let p = product_series.get(i).unwrap();
+            let qty = quantity_series.get(i).unwrap();
             let price = match p {
                 "Coffee" => 35 * qty,
                 "Tea" => 39 * qty,

@@ -4,6 +4,9 @@ Using the Polars data-frames and time-series library in Rust.
 
 See the [Polars homepage](http://pola.rs) for more information.
 
+# Compilation Speed
+As soon as Polars is included, the compile time skyrockets.
+
 # Feature Flags
 Everything is hidden behind feature flags, so you have to enable the things you need.
 See https://pola-rs.github.io/polars-book/user-guide/installation/ for more information.

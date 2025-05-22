@@ -7,4 +7,4 @@ edition = "2024"
 
 [dependencies]
 chrono = "0.4.31"
-polars = { version = "0.48.1", features = ["lazy", "random", "dynamic_group_by", "temporal", "dtype-date"] }
+polars = { version = "0.48.1", features = ["lazy", "random", "dynamic_group_by", "temporal", "dtype-date", "dtype-datetime", "timezones", "strings"] }

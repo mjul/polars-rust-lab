@@ -80,8 +80,6 @@ fn sales_report() {
         .collect();
     println!("Sales by product: {:?}", sales_by_product);
 
-    //let opts = DynamicGroupOptions::default().every(Duration::parse("1mo")).
-
     let opts = DynamicGroupOptions {
         // Every calendar month
         // "mo": calendar month
@@ -132,4 +130,54 @@ fn main() {
     println!("Starting...");
     sales_report();
     println!("Done.")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn convert_tz() {
+        let ts_local = [
+            "2025-05-22T10:00:00",
+            "2025-05-22T11:00:00",
+            "2025-05-23T12:00:00",
+        ];
+        // Naive in chrono means with no timezone
+        let tz_naive = Column::new("tz_naive".into(), &ts_local);
+
+        let df = DataFrame::new(vec![tz_naive.into()])
+            .unwrap()
+            .lazy()
+            // Enable the strings and dtype-datetime features for this:
+            .select(vec![col("tz_naive").str().to_datetime(
+                Some(TimeUnit::Milliseconds),
+                None,
+                StrptimeOptions::default(),
+                lit("raise"),
+            )])
+            .with_columns([col("tz_naive")
+                .dt()
+                .replace_time_zone(
+                    // The TimeZone in the polars::prelude module has the feature we need
+                    TimeZone::opt_try_new(Some("Europe/Copenhagen")).unwrap(),
+                    lit("raise"),
+                    NonExistent::Raise,
+                )
+                .alias("tz_copenhagen")])
+            .with_columns([col("tz_copenhagen")
+                .dt()
+                .replace_time_zone(Some(TimeZone::UTC), lit("raise"), NonExistent::Raise)
+                .alias("tz_utc")])
+            .collect()
+            .unwrap();
+
+        println!("df: {:?}", df);
+
+        assert_eq!((3, 3), df.shape());
+        assert_eq!(
+            vec!["tz_naive", "tz_copenhagen", "tz_utc"],
+            df.get_column_names_str()
+        );
+    }
 }

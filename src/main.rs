@@ -126,9 +126,48 @@ fn sales_report() {
     );
 }
 
+/// Working with and without time-zones and converting between them.
+fn time_zones() -> PolarsResult<DataFrame> {
+    let ts_local = [
+        "2025-05-22T10:00:00",
+        "2025-05-22T11:00:00",
+        "2025-05-23T12:00:00",
+    ];
+    // Naive in chrono means with no timezone
+    let tz_naive = Column::new("tz_naive".into(), &ts_local);
+
+    DataFrame::new(vec![tz_naive.into()])
+        .unwrap()
+        .lazy()
+        // Enable the strings and dtype-datetime features for this:
+        .select(vec![col("tz_naive").str().to_datetime(
+            Some(TimeUnit::Milliseconds),
+            None,
+            StrptimeOptions::default(),
+            lit("raise"),
+        )])
+        .with_columns([col("tz_naive")
+            .dt()
+            .replace_time_zone(
+                // The TimeZone in the polars::prelude module has the feature we need
+                TimeZone::opt_try_new(Some("Europe/Copenhagen")).unwrap(),
+                lit("raise"),
+                NonExistent::Raise,
+            )
+            .alias("tz_copenhagen")])
+        .with_columns([col("tz_copenhagen")
+            .dt()
+            .convert_time_zone(TimeZone::UTC)
+            .alias("tz_utc")])
+        .collect()
+}
+
 fn main() {
     println!("Starting...");
     sales_report();
+    println!();
+    println!("Time zones");
+    println!("{}", time_zones().unwrap());
     println!("Done.")
 }
 
@@ -137,40 +176,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn convert_tz() {
-        let ts_local = [
-            "2025-05-22T10:00:00",
-            "2025-05-22T11:00:00",
-            "2025-05-23T12:00:00",
-        ];
-        // Naive in chrono means with no timezone
-        let tz_naive = Column::new("tz_naive".into(), &ts_local);
-
-        let df = DataFrame::new(vec![tz_naive.into()])
-            .unwrap()
-            .lazy()
-            // Enable the strings and dtype-datetime features for this:
-            .select(vec![col("tz_naive").str().to_datetime(
-                Some(TimeUnit::Milliseconds),
-                None,
-                StrptimeOptions::default(),
-                lit("raise"),
-            )])
-            .with_columns([col("tz_naive")
-                .dt()
-                .replace_time_zone(
-                    // The TimeZone in the polars::prelude module has the feature we need
-                    TimeZone::opt_try_new(Some("Europe/Copenhagen")).unwrap(),
-                    lit("raise"),
-                    NonExistent::Raise,
-                )
-                .alias("tz_copenhagen")])
-            .with_columns([col("tz_copenhagen")
-                .dt()
-                .convert_time_zone(TimeZone::UTC)
-                .alias("tz_utc")])
-            .collect()
-            .unwrap();
+    fn test_time_zones() {
+        let df = time_zones().unwrap();
 
         println!("df: {:?}", df);
 

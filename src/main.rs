@@ -167,7 +167,7 @@ mod tests {
                 .alias("tz_copenhagen")])
             .with_columns([col("tz_copenhagen")
                 .dt()
-                .replace_time_zone(Some(TimeZone::UTC), lit("raise"), NonExistent::Raise)
+                .convert_time_zone(TimeZone::UTC)
                 .alias("tz_utc")])
             .collect()
             .unwrap();
